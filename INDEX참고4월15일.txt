@@ -1,0 +1,88 @@
+-- INDEX Rebuild 연습 예제
+-- STEP 1 테스트용 테이블 i_test 생성하고 인덱스 생성
+create table i_test
+(no number);
+
+begin
+    for i in 1..10000 loop
+        insert into i_test values(i);
+    end loop;
+commit;
+end;
+
+select * from i_test;
+desc i_test;
+
+create index idx_itest_no on i_test(no);
+
+-- step 2 인덱스 상태 조회
+analyze index idx_itest_no validate STRUCTURE;
+
+select (del_lf_rows_len / lf_rows_len) * 100 balance
+from index_stats
+where name='IDX_ITEST_NO';
+
+-- STEP 3 4000건 삭제 후 인덱스 상태 조회
+DELETE FROM I_TEST
+WHERE no BETWEEN 1 AND 4000;
+
+SELECT COUNT(*) FROM I_TEST;
+
+analyze index idx_itest_no validate STRUCTURE;
+
+select (del_lf_rows_len / lf_rows_len) * 100 balance
+from index_stats
+where name='IDX_ITEST_NO';
+
+-- STEP 4 Rebuild 작업으로 수정
+ALTER INDEX idx_itest_no REBUILD;
+
+analyze index idx_itest_no validate STRUCTURE;
+
+select (del_lf_rows_len / lf_rows_len) * 100 balance
+from index_stats
+where name='IDX_ITEST_NO';
+
+-- 다양한 인덱스 활용 예제
+
+-- STEP 1 : 예제 사원 테이블 생성 후 값 입력
+CREATE TABLE new_emp7(
+    no      NUMBER,
+    name    VARCHAR2(10),
+    sal     NUMBER);
+
+INSERT INTO new_emp7 VALUES(1000,'SMITH',300);
+INSERT INTO new_emp7 VALUES(1001,'ALLEN',250);
+INSERT INTO new_emp7 VALUES(1002,'KING',430);
+INSERT INTO new_emp7 VALUES(1003,'BLAKE',220);
+INSERT INTO new_emp7 VALUES(1004,'JAMES',620);
+INSERT INTO new_emp7 VALUES(1005,'MILLER',810);
+
+COMMIT;
+
+SELECT * FROM new_emp7;
+
+-- STEP 2 : Name 컬럼에 인덱스 생성
+CREATE INDEX idx_newemp7_name
+ON new_emp7(name);
+
+-- STEP 3 : 인덱스를 사용하지 않는 일반적인 sql 작성
+select name from new_emp7;
+
+-- STEP 4 : 인덱스를 사용하도록 sql 작성
+select name from new_emp7
+where name > '0';
+
+-- STEP 5 : 인덱스를 활용한 최솟값/최대값 구하기
+select min(name)
+from new_emp7;
+
+select name from new_emp7
+where name > '0' and rownum=1;
+
+select max(name)
+from new_emp7;
+
+select /** INDEX_DESC(e IDX_NEWEMP7_NAME) **/ max(name)
+from new_emp7 e
+where name > '0';
